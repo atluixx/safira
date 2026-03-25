@@ -1,53 +1,39 @@
 using Discord;
-using Discord.Net;
-using Newtonsoft.Json;
+using Discord.WebSocket;
 using Safira.Core;
 
-namespace Safira.Commands;
-
-public class SlashCommand(ExtendedClient client, string name, string description)
+namespace Safira.Commands
 {
-    private readonly ExtendedClient _client = client;
-    private readonly string _name = name;
-    private readonly string _description = description;
-
-    private SlashCommandProperties BuildCommand()
+    public abstract class SlashCommandBase(ExtendedClient client)
     {
-        return new SlashCommandBuilder()
-            .WithName(_name)
-            .WithDescription(_description)
-            .Build();
-    }
+        protected readonly ExtendedClient Client = client;
 
-    public async Task RegisterGlobal()
-    {
-        try
-        {
-            await _client.CreateGlobalApplicationCommandAsync(BuildCommand());
-        }
-        catch (HttpException ex)
-        {
-            Console.WriteLine(JsonConvert.SerializeObject(ex.Errors, Formatting.Indented));
-        }
-    }
+        public abstract string Name { get; }
+        public abstract string Description { get; }
 
-    public async Task RegisterGuild(ulong guildId)
-    {
-        var guild = _client.GetGuild(guildId);
-
-        if (guild is null)
+        public async Task RegisterGlobal()
         {
-            Console.WriteLine($"Guild {guildId} not found.");
-            return;
+            var command = new SlashCommandBuilder()
+                .WithName(Name.ToLower())
+                .WithDescription(Description)
+                .Build();
+
+            await Client.CreateGlobalApplicationCommandAsync(command);
         }
 
-        try
+        public async Task RegisterGuild(ulong guildId)
         {
-            await guild.CreateApplicationCommandAsync(BuildCommand());
+            var guild = Client.GetGuild(guildId);
+            if (guild == null) return;
+
+            var command = new SlashCommandBuilder()
+                .WithName(Name.ToLower())
+                .WithDescription(Description)
+                .Build();
+
+            await guild.CreateApplicationCommandAsync(command);
         }
-        catch (HttpException ex)
-        {
-            Console.WriteLine(JsonConvert.SerializeObject(ex.Errors, Formatting.Indented));
-        }
+
+        public abstract Task Execute(SocketSlashCommand command);
     }
 }

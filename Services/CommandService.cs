@@ -1,16 +1,32 @@
+using System.Reflection;
 using Safira.Commands;
 using Safira.Core;
 
 namespace Safira.Services;
 
-public class CommandService(ExtendedClient client)
+public class CommandService
 {
-    private readonly ExtendedClient _client = client;
+    private readonly ExtendedClient _client;
+    public List<SlashCommandBase> Commands { get; } = [];
 
-    public async Task RegisterCommands()
+    public CommandService(ExtendedClient client)
     {
-        var ping = new SlashCommand(_client, "ping", "Replies with pong");
+        _client = client;
+        var commandTypes = Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => t.IsSubclassOf(typeof(SlashCommandBase)) && !t.IsAbstract);
 
-        await ping.RegisterGlobal();
+        foreach (var type in commandTypes)
+        {
+            var commandInstance = (SlashCommandBase)Activator.CreateInstance(type, _client)!;
+            Commands.Add(commandInstance);
+        }
+    }
+
+    public async Task RegisterAllCommands()
+    {
+        foreach (var command in Commands)
+            await command.RegisterGlobal();
     }
 }
+
