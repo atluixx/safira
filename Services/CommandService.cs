@@ -1,11 +1,16 @@
-using Discord.WebSocket;
+using Safira.Commands;
+using Safira.Core;
 
 namespace Safira.Services;
 
-public class CommandService
+public class CommandService(ExtendedClient client)
 {
-    public static Task ProcessMessage(SocketMessage message)
+    private readonly ExtendedClient _client = client;
+
+    public async Task RegisterCommands()
     {
-        return Task.CompletedTask;
+        var ping = new SlashCommand(_client, "ping", "Replies with pong");
+
+        await ping.RegisterGlobal();
     }
 }

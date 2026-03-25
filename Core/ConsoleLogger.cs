@@ -1,8 +1,8 @@
 using Discord;
 
-namespace Safira.Interfaces;
+namespace Safira.Core;
 
-public class ILogger
+public static class ConsoleLogger
 {
     public static Task Log(LogMessage logMessage)
     {

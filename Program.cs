@@ -13,9 +13,13 @@ public class Program
     {
         Env.Load();
         var secret = Environment.GetEnvironmentVariable("SAFIRA_SECRET") ?? throw new InvalidOperationException("SAFIRA_SECRET is not set.");
+        MessageService messageService = new(Client);
+        ClientService clientService = new(Client);
+
 
         Client.Log += ILogger.Log;
-        Client.MessageReceived += CommandService.ProcessMessage;
+        Client.MessageReceived += messageService.ProcessMessage;
+        Client.Ready += clientService.Ready;
 
         await Client.LoginAsync(TokenType.Bot, secret);
         await Client.StartAsync();
