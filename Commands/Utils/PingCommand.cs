@@ -1,3 +1,4 @@
+using Discord;
 using Discord.WebSocket;
 using Safira.Core;
 
@@ -9,5 +10,5 @@ public class PingCommand(ExtendedClient client) : SlashCommandBase(client)
     public override string Description => "Replies with pong!";
 
     public override async Task Execute(SocketSlashCommand command)
-        => await command.RespondAsync("Pong!");
+        => await command.RespondAsync("Pong!", flags: MessageFlags.Ephemeral);
 }

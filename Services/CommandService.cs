@@ -1,32 +1,49 @@
 using System.Reflection;
+using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
 using Safira.Commands;
-using Safira.Core;
 
 namespace Safira.Services;
 
 public class CommandService
 {
-    private readonly ExtendedClient _client;
-    public List<SlashCommandBase> Commands { get; } = [];
+    private readonly IServiceProvider _services;
+    private readonly Dictionary<string, Type> _commandMap = new(StringComparer.OrdinalIgnoreCase);
 
-    public CommandService(ExtendedClient client)
+    public CommandService(IServiceProvider services)
     {
-        _client = client;
+        _services = services;
+
         var commandTypes = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.IsSubclassOf(typeof(SlashCommandBase)) && !t.IsAbstract);
 
         foreach (var type in commandTypes)
         {
-            var commandInstance = (SlashCommandBase)Activator.CreateInstance(type, _client)!;
-            Commands.Add(commandInstance);
+            using var scope = services.CreateScope();
+            var instance = (SlashCommandBase)ActivatorUtilities.CreateInstance(scope.ServiceProvider, type);
+            _commandMap[instance.Name] = type;
         }
     }
 
     public async Task RegisterAllCommands()
     {
-        foreach (var command in Commands)
-            await command.RegisterGlobal();
+        var registered = new HashSet<Type>();
+        foreach (var (_, type) in _commandMap)
+        {
+            if (!registered.Add(type)) continue;
+
+            using var scope = _services.CreateScope();
+            var instance = (SlashCommandBase)ActivatorUtilities.CreateInstance(scope.ServiceProvider, type);
+
+            await instance.RegisterGlobal();
+        }
+    }
+
+    public async Task Execute(IServiceProvider scopedServices, SocketSlashCommand command)
+    {
+        if (!_commandMap.TryGetValue(command.CommandName, out var type)) return;
+        var instance = (SlashCommandBase)ActivatorUtilities.CreateInstance(scopedServices, type);
+        await instance.Execute(command);
     }
 }
-
